@@ -53,6 +53,36 @@
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
         }
 
+        /* Mobil cihazlar için responsive */
+        @media (max-width: 768px) {
+            .quote {
+                font-size: 18px;
+                padding: 0 15px;
+            }
+
+            .gif-container img {
+                max-width: 95%;
+                max-height: 60vh;
+            }
+
+            .gif-container {
+                gap: 20px;
+                padding: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .quote {
+                font-size: 16px;
+                padding: 0 10px;
+            }
+
+            .gif-container img {
+                max-width: 100%;
+                max-height: 50vh;
+            }
+        }
+
         .status {
             color: #ffffff;
             font-size: 16px;

